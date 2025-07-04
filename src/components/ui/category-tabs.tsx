@@ -1,6 +1,6 @@
 import { Tabs, TabsList, TabsTrigger } from './tabs'
 
-const categories = [
+const CATEGORIES = [
   'All',
   'Vehicles',
   'Property Rentals',
@@ -12,6 +12,7 @@ const categories = [
   'Hobbies',
   'Home Goods',
   'Musical Instruments',
+  'Others',
 ]
 
 interface CategoryTabsProps {
@@ -23,7 +24,7 @@ export function CategoryTabs({ activeCategory, onCategoryChange }: CategoryTabsP
   return (
     <Tabs value={activeCategory} onValueChange={onCategoryChange} className="w-full">
       <TabsList className="flex gap-2 overflow-x-auto p-2 bg-transparent">
-        {categories.map((category) => (
+        {CATEGORIES.map((category) => (
           <TabsTrigger
             key={category}
             value={category}

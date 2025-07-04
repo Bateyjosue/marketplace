@@ -165,4 +165,13 @@ export async function sendMessage(message: Omit<Message, 'id' | 'created_at'>) {
   
   if (error) throw error
   return data[0] as Message
+}
+
+// Helper function to delete a listing
+export async function deleteListing(id: string) {
+  const { error } = await supabase
+    .from('listings')
+    .delete()
+    .eq('id', id)
+  if (error) throw error
 } 

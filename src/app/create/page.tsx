@@ -1,16 +1,36 @@
 'use client'
 
-import { useSearchParams } from 'next/navigation'
+import { useSearchParams, useRouter } from 'next/navigation'
 import { ListingTypeSelector } from '@/components/ui/listing-type-selector'
 import { useState } from 'react'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
-import { Select } from '@/components/ui/select'
 import { Button } from '@/components/ui/button'
 import Image from 'next/image'
-import { createListing, uploadImage } from '@/lib/supabase'
-import { toast } from 'sonner'
+import { createListing, getListings, uploadImage } from '@/lib/supabase'
+
+const CATEGORIES = [
+  'Vehicles',
+  'Property Rentals',
+  'Apparel',
+  'Electronics',
+  'Entertainment',
+  'Family',
+  'Garden & Outdoor',
+  'Hobbies',
+  'Home Goods',
+  'Musical Instruments',
+  'Others',
+]
+
+const CONDITIONS = [
+  'New',
+  'Like New',
+  'Good',
+  'Fair',
+  'Poor',
+]
 
 export default function CreatePage() {
   const searchParams = useSearchParams()
@@ -22,25 +42,21 @@ export default function CreatePage() {
     category: '',
     condition: '',
     description: '',
+    email: '',
     images: [] as string[]
   })
 
   const [previewImage, setPreviewImage] = useState<string | null>(null)
+  const [location, setLocation] = useState('')
+  const router = useRouter()
+  const [error, setError] = useState('')
 
-  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
-    if (file) {
-      const reader = new FileReader()
-      reader.onloadend = () => {
-        const imageUrl = reader.result as string
-        setPreviewImage(imageUrl)
-        setFormData(prev => ({
-          ...prev,
-          images: [...prev.images, imageUrl]
-        }))
-      }
-      reader.readAsDataURL(file)
-    }
+    if (!file) return
+    const publicUrl = await uploadImage(file)
+    setPreviewImage(publicUrl)
+    setFormData(prev => ({ ...prev, images: [publicUrl] }))
   }
 
   if (!type) {
@@ -49,24 +65,45 @@ export default function CreatePage() {
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()
-    if (!previewImage) return
-
+    // basic validation
+    if (!formData.email.trim() || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
+      setError('Please enter a valid email address.')
+      return
+    }
+    if (!formData.title.trim() || !formData.price) {
+      setError('Title and price are required.')
+      return
+    }
     try {
-      await createListing({
+      // Prevent duplicate listings
+      const allListings = await getListings()
+      const duplicate = allListings.find(l =>
+        l.title.trim().toLowerCase() === formData.title.trim().toLowerCase() &&
+        l.description.trim().toLowerCase() === formData.description.trim().toLowerCase() &&
+        l.price === Number(formData.price) &&
+        l.category === (formData.category || 'Others') &&
+        l.condition === (formData.condition || '') &&
+        l.email.trim().toLowerCase() === formData.email.trim().toLowerCase()
+      )
+      if (duplicate) {
+        return
+      }
+
+      if (!previewImage) return
+
+      const newListing = await createListing({
         title: formData.title,
         description: formData.description,
         price: Number(formData.price),
-        email: '',
-        category: formData.category,
-        condition: formData.condition,
-        location: 'Palo Alto, CA',
+        email: formData.email,
+        category: formData.category || 'Others',
+        condition: formData.condition || '',
+        location,
         image_url: previewImage,
       })
-
-      toast.success('Listing created successfully!')
-    } catch (error) {
-      console.error('Error creating listing:', error)
-      toast.error('Failed to create listing. Please try again.')
+      router.push(`/listing/${newListing.id}`)
+    } catch (err) {
+      console.error('Error creating listing:', err)
     }
   }
 
@@ -125,31 +162,56 @@ export default function CreatePage() {
 
           <div>
             <Label htmlFor="category">Category</Label>
-            <Select
-              id="category"
+            <select
               value={formData.category}
-              onValueChange={(value) => setFormData(prev => ({ ...prev, category: value }))}
+              onChange={(e) => setFormData(prev => ({ ...prev, category: e.target.value }))}
+              className="w-full border rounded px-3 py-2 mb-2"
+              required
             >
-              <option value="">Select a category</option>
-              <option value="electronics">Electronics</option>
-              <option value="furniture">Furniture</option>
-              <option value="clothing">Clothing</option>
-            </Select>
+              <option value="">Select category</option>
+              {CATEGORIES.map(cat => (
+                <option key={cat} value={cat}>{cat}</option>
+              ))}
+            </select>
           </div>
 
           <div>
             <Label htmlFor="condition">Condition</Label>
-            <Select
-              id="condition"
+            <select
               value={formData.condition}
-              onValueChange={(value) => setFormData(prev => ({ ...prev, condition: value }))}
+              onChange={(e) => setFormData(prev => ({ ...prev, condition: e.target.value }))}
+              className="w-full border rounded px-3 py-2 mb-2"
+              required
             >
               <option value="">Select condition</option>
-              <option value="new">New</option>
-              <option value="like-new">Like New</option>
-              <option value="good">Good</option>
-              <option value="fair">Fair</option>
-            </Select>
+              {CONDITIONS.map(cond => (
+                <option key={cond} value={cond}>{cond}</option>
+              ))}
+            </select>
+          </div>
+
+          <div>
+            <Label htmlFor="location">Location</Label>
+            <input
+              type="text"
+              value={location}
+              onChange={(e) => setLocation(e.target.value)}
+              className="w-full border rounded px-3 py-2 mb-2"
+              required
+              placeholder="Enter location"
+            />
+          </div>
+
+          <div>
+            <Label htmlFor="email">Email</Label>
+            <Input
+              id="email"
+              type="email"
+              value={formData.email}
+              onChange={e => setFormData(prev => ({ ...prev, email: e.target.value }))}
+              placeholder="Enter your email address"
+              required
+            />
           </div>
 
           <div>
@@ -163,7 +225,10 @@ export default function CreatePage() {
             />
           </div>
 
-          <Button className="w-full" onClick={handleSubmit}>List Item</Button>
+          {error && <p className="text-red-500 text-sm">{error}</p>}
+          <form onSubmit={handleSubmit} className="space-y-6">
+            <Button className="w-full" type="submit">List Item</Button>
+          </form>
         </div>
 
         {/* Preview Section */}
@@ -200,6 +265,9 @@ export default function CreatePage() {
               )}
               {formData.condition && (
                 <p>Condition: {formData.condition}</p>
+              )}
+              {formData.email && (
+                <p>Email: {formData.email}</p>
               )}
             </div>
           </div>

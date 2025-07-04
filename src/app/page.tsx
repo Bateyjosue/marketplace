@@ -33,6 +33,21 @@ export default function Home() {
     return matchesSearch && matchesCategory
   })
 
+  const categories = [
+    'All',
+    'Vehicles',
+    'Property Rentals',
+    'Apparel',
+    'Electronics',
+    'Entertainment',
+    'Family',
+    'Garden & Outdoor',
+    'Hobbies',
+    'Home Goods',
+    'Musical Instruments',
+    'Others',
+  ]
+
   return (
     <div className="flex">
       {/* Left Sidebar */}
@@ -40,7 +55,7 @@ export default function Home() {
         <div className="space-y-2">
           <h2 className="font-semibold text-xl mb-4">Categories</h2>
           <nav className="space-y-1">
-            {['All', 'Vehicles', 'Property Rentals', 'Apparel', 'Electronics', 'Entertainment', 'Family', 'Garden & Outdoor', 'Hobbies', 'Home Goods', 'Musical Instruments'].map((category) => (
+            {categories.map((category) => (
               <button
                 key={category}
                 onClick={() => setActiveCategory(category)}
@@ -86,7 +101,7 @@ export default function Home() {
           ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
               {filteredListings.map((listing) => (
-                <ListingCard key={listing.id} listing={listing} />
+                <ListingCard key={listing.id} listing={{...listing, category: listing.category || 'Others'}} />
               ))}
             </div>
           )}
