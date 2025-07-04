@@ -11,6 +11,7 @@ import { Textarea } from '@/components/ui/textarea'
 import { Button } from '@/components/ui/button'
 import Image from 'next/image'
 import { createListing, getListings, uploadImage } from '@/lib/supabase'
+import { Suspense } from 'react'
 
 const CATEGORIES = [
   'Vehicles',
@@ -34,7 +35,7 @@ const CONDITIONS = [
   'Poor',
 ]
 
-export default function CreatePage() {
+function CreatePageInner() {
   const searchParams = useSearchParams()
   const type = searchParams.get('type')
   
@@ -283,5 +284,13 @@ export default function CreatePage() {
         </div>
       </div>
     </div>
+  )
+}
+
+export default function CreatePage() {
+  return (
+    <Suspense fallback={null}>
+      <CreatePageInner />
+    </Suspense>
   )
 } 
